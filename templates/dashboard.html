@@ -5,6 +5,19 @@
         <body>
             <h2>Welcome, {{ username }}!</h2>
             This is your Dashboard.
+            <form method="post" enctype="multipart/form-data">
+                <input type="file" name="'file">
+                <input type="submite" value="Upload">
+            </form>
+            <h3>Your Files</h3>
+            <ul>
+                {% for filename, size, date in files %}
+                <li>
+                    <a href="{{ url_for('download_file', filename=filename)}}">{{ filename }}</a>
+                    ({{ size }} bytes, uploaded {{ date }})
+                </li>
+                {% endfor %}
+            </ul>
             <a href="/logout">Logout</a>
         </body>
     </head>
