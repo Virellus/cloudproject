@@ -9,9 +9,9 @@ allowed_extensions = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['upload_folder'] = upload_folder
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
-
 app.secret_key = "f5mf37mrf946meap4625"
-DB = "users.db"
+USER_DB = "users.db"
+FILES_DB = "files.db"
 ##HomePage
 @app.route('/')
 def home():
@@ -24,7 +24,7 @@ def register():
         email = request.form['email']
         password = request.form['password']
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        connection = sqlite3.connect(DB)
+        connection = sqlite3.connect(USER_DB)
         c = connection.cursor()
         try:
             c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
@@ -41,7 +41,7 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        connection = sqlite3.connect(DB)
+        connection = sqlite3.connect(USER_DB)
         c = connection.cursor()
         c.execute("SELECT id, username, password FROM users WHERE email = ?", (email,))
         user = c.fetchone()
@@ -56,36 +56,39 @@ def login():
 #Dashboard
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    if 'user_id' not in session: 
+    print("==> Using DB path:", os.path.abspath(FILES_DB))
+    username = session.get('username')
+    if not username:
         return redirect(url_for('login'))
-    username = session['user']
     user_dir = os.path.join(app.config['upload_folder'], username)
     os.makedirs(user_dir, exist_ok=True)
+    files = []
     if request.method == 'POST':
-        file = request.files['file']
+        file = request.files.get('file')
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             path = os.path.join(user_dir, filename)
             file.save(path)
             ##saving file meta data to datebase
-            connection = sqlite3.connect(DB)
+            connection = sqlite3.connect(FILES_DB)
             c = connection.cursor()
-            c.execute("INSERT INTO file (usernmae, filename, size, upload_date) VALUES (?, ?, ?, datetime('now))", (username, filename, os.path.getsize(path)))
+            c.execute("INSERT INTO files (username, filename, size, upload_date) VALUES (?, ?, ?, datetime('now'))", (username, filename, os.path.getsize(path)))
             connection.commit()
             connection.close()
-            return redirect(url_for('dashboard'))
-        connection = sqlite3.connect(DB)
+            flash("File uploaded successfully!", "success")
+            return render_template('dashboard.html', files=files, username=username)
+        connection = sqlite3.connect(FILES_DB)
         c = connection.cursor()
-        c.execute("SELECT filename, size, upload_date FROM files WHERE usernmae = ?", (username,))
-        files = c.fetchall
+        c.execute("SELECT filename, size, upload_date FROM files WHERE username = ?", (username,))
+        files = c.fetchall()
         connection.close()
-        return render_template('dashboard.html', files=files)
+    return render_template('dashboard.html', files=files, username=username)
 ##ability to add files
 @app.route('/download/<filename>')
 def download_file(filename):
-    if 'user' not in session:
+    username = session.get('username')
+    if not username: 
         return redirect(url_for('login'))
-    username = session['username']
     user_dir = os.path.join(app.config['upload_folder'], username,)
     return send_from_directory(user_dir, filename, as_attachment=True)
 #Logout
