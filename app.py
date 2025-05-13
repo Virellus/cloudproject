@@ -55,6 +55,7 @@ def login():
             return "Login failed: wring credetials"
     return render_template('login.html')
 #Dashboard
+"""
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     print("==> Using DB path:", os.path.abspath(FILES_DB))
@@ -89,6 +90,41 @@ def dashboard():
         files = c.fetchall()
         connection.close()
     return render_template('dashboard.html', files=files, username=username)
+"""
+## new dashbaord?
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    print("==> Using DB path:", os.path.abspath(FILES_DB))
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+    user_dir = os.path.join(app.config['upload_folder'], username)
+    os.makedirs(user_dir, exist_ok=True)
+    connection = sqlite3.connect(FILES_DB)
+    c = connection.cursor()
+    c.execute("SELECT filename, size, upload_date FROM files WHERE username = ?", (username,))
+    files = c.fetchall()
+    connection.close()
+    return render_template('dashboard.html', files=files, username=username)
+## new upload?
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+    user_dir = os.path.join(app.config['upload_folder'], username)
+    file = request.files.get('file')
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        path = os.path.join(user_dir, filename)
+        file.save(path)
+        connection = sqlite3.connect(FILES_DB)
+        c = connection.cursor()
+        c.execute("INSERT INTO files (username, filename, size, upload_date) VALUES (?, ?, ?, datetime('now'))", (username, filename, os.path.getsize(path)))
+        connection.commit()
+        connection.close()
+        flash("File uploaded successfully!", "success")
+    return redirect(url_for('dashboard'))
 ##ability to add files
 @app.route('/download/<path:filename>')
 def download_file(filename):

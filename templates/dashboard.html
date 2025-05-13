@@ -1,37 +1,76 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Dashboard</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="{{ url_for('static', filename='js/tailwind.config.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     </head>
-    <body>
-        <h2>Welcome, {{ username }}!</h2>
-        <p>This is your Dashboard.</p>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul> 
-                    {% for category, message in messages %}
-                    <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-        <form method="post" enctype="multipart/form-data">
-            <input type="file" name="file">
-            <input type="submit" value="Upload">
-        </form>
-        <h3>Your Files</h3>
-        <p>Click a file name below to download it.</p>
-        <ul>
-            {% for filename, size, date in files %}
-            <li>
-                <a href="{{ url_for('download_file', filename=filename) }}">{{ filename }}</a>
-                ({{ size }} bytes, uploaded {{ date }})
-                <form method="POST" action="{{ url_for('delete_file', filename=filename)}}" style="display:inline;">
-                    <button type="submit">Delete</button>
+    <body class="bg-gray-50 min-h-screen">
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <header class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Welcome, {{ username }}!</h2>
+                    <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Logout</a>
+                </div>
+                <p class="text-gray-600 mt-1">This is your Dashboard.</p>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-6">
+                        {% for category, message in messages %}
+                            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Upload New File</h3>
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                    <div class="flex-grow w-full sm:w-auto">
+                        <label class="block w-full px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-center">
+                            <span class="text-gray-700">Select a file</span>
+                            <input type="file" name="file" class="hidden">
+                        </label>
+                    </div>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium w-full sm:w-auto">Upload</button>
                 </form>
-            </li>
-            {% endfor %}
-        </ul>
-        <a href="/logout">Logout</a>
+            </div>
+
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Your Files</h3>
+                <p class="text-gray-600 text-sm mb-4">Click a file name to download it.</p>
+                
+                {% if files %}
+                    <ul class="divide-y divide-gray-200">
+                        {% for filename, size, date in files %}
+                        <li class="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex-grow mb-2 sm:mb-0">
+                                <a href="{{ url_for('download_file', filename=filename) }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                                    {{ filename }}
+                                </a>
+                                <p class="text-sm text-gray-500">{{ size }} bytes, uploaded {{ date }}</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('delete_file', filename=filename)}}">
+                                <button type="submit" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm">
+                                    Delete
+                                </button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <p>You haven't uploaded any files yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </body>
 </html>
