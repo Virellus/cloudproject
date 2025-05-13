@@ -4,6 +4,17 @@ import bcrypt
 import os
 from werkzeug.utils import *
 from mimetypes import *
+## gets called to check file type with list of arrpoved
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'csv'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+## limits file size to 10MB
+def validate_file_size(file):
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+    file.seek(0,2)
+    file_size = file.tell()
+    file.seek(0)
+    return file_size <= MAX_FILE_SIZE, file_size
 app = Flask(__name__)
 upload_folder = 'uploads'
 allowed_extensions = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -94,7 +105,8 @@ def dashboard():
 ## new dashbaord?
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    print("==> Using DB path:", os.path.abspath(FILES_DB))
+    ##print("==> Using DB path:", os.path.abspath(FILES_DB))
+    ## checks if the user is a vailid user and if not kicks them back to login
     username = session.get('username')
     if not username:
         return redirect(url_for('login'))
@@ -114,17 +126,43 @@ def upload_file():
         return redirect(url_for('login'))
     user_dir = os.path.join(app.config['upload_folder'], username)
     file = request.files.get('file')
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        path = os.path.join(user_dir, filename)
-        file.save(path)
-        connection = sqlite3.connect(FILES_DB)
-        c = connection.cursor()
-        c.execute("INSERT INTO files (username, filename, size, upload_date) VALUES (?, ?, ?, datetime('now'))", (username, filename, os.path.getsize(path)))
-        connection.commit()
-        connection.close()
-        flash("File uploaded successfully!", "success")
+    if not file or file.filename =='':
+        flash("No file selected", "error")
+        return redirect(url_for('dashboard'))
+    ## vailidates file extension
+    if not allowed_file(file.filename):
+        flash ("File type not allowed. Please upload a supported file type (txt, pdf, images, office documents).", "error")
+        return redirect(url_for('dashboard'))
+    ## valitates file size ##
+    ## gets file size 
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+    if file_size > MAX_FILE_SIZE:
+        size_mb = file_size / (1024 * 1024)
+        flash(f"File is too large ({size_mb:.2f} MB). Maximum size is 10 MB.", "error")
+        return redirect(url_for('dashboard'))
+    ##size_valid, file_size = validate_file_size(file)
+    ##if not size_valid:
+    ##file = request.files.get('file')
+    ##if file and allowed_file(file.filename):
+    filename = secure_filename(file.filename)
+    path = os.path.join(user_dir, filename)
+    ##file.save(path)
+    if os.path.exists(path):
+        flash(f"A file with name '{filename}' already exists. Please rename your file.", "error")
+        return redirect(url_for('dashboard'))
+    file.save(path)
+    connection = sqlite3.connect(FILES_DB)
+    c = connection.cursor()
+    c.execute("INSERT INTO files (username, filename, size, upload_date) VALUES (?, ?, ?, datetime('now'))", (username, filename, os.path.getsize(path)))
+    connection.commit()
+    connection.close()
+    flash("File uploaded successfully!", "success")
     return redirect(url_for('dashboard'))
+
+
 ##ability to add files
 @app.route('/download/<path:filename>')
 def download_file(filename):
