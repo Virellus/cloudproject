@@ -20,11 +20,15 @@
             <input type="submit" value="Upload">
         </form>
         <h3>Your Files</h3>
+        <p>Click a file name below to download it.</p>
         <ul>
             {% for filename, size, date in files %}
             <li>
-                <a href="{{ url_for('download_file', filename=filename)}}">{{ filename }}</a>
+                <a href="{{ url_for('download_file', filename=filename) }}">{{ filename }}</a>
                 ({{ size }} bytes, uploaded {{ date }})
+                <form method="POST" action="{{ url_for('delete_file', filename=filename)}}" style="display:inline;">
+                    <button type="submit">Delete</button>
+                </form>
             </li>
             {% endfor %}
         </ul>

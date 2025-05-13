@@ -3,6 +3,7 @@ import sqlite3
 import bcrypt
 import os
 from werkzeug.utils import *
+from mimetypes import *
 app = Flask(__name__)
 upload_folder = 'uploads'
 allowed_extensions = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -62,7 +63,12 @@ def dashboard():
         return redirect(url_for('login'))
     user_dir = os.path.join(app.config['upload_folder'], username)
     os.makedirs(user_dir, exist_ok=True)
-    files = []
+    ##files = []
+    connection = sqlite3.connect(FILES_DB)
+    c = connection.cursor()
+    c.execute("SELECT filename, size, upload_date FROM files WHERE username = ?", (username,))
+    files = c.fetchall()
+    connection.close()
     if request.method == 'POST':
         file = request.files.get('file')
         if file and allowed_file(file.filename):
@@ -76,7 +82,7 @@ def dashboard():
             connection.commit()
             connection.close()
             flash("File uploaded successfully!", "success")
-            return render_template('dashboard.html', files=files, username=username)
+            ##return render_template('dashboard.html', files=files, username=username)
         connection = sqlite3.connect(FILES_DB)
         c = connection.cursor()
         c.execute("SELECT filename, size, upload_date FROM files WHERE username = ?", (username,))
@@ -84,17 +90,73 @@ def dashboard():
         connection.close()
     return render_template('dashboard.html', files=files, username=username)
 ##ability to add files
-@app.route('/download/<filename>')
+@app.route('/download/<path:filename>')
 def download_file(filename):
-    username = session.get('username')
-    if not username: 
+    ##username = session.get('username')
+        ##return redirect(url_for('login'))
+    ##filepath = os.path.join(user_dir, filename)
+    ##debuging
+    ##print(f"USer: {username}")
+    ##print(f"Filepath: {filepath}")
+    ##print(f"Filename: {filename}")
+    ##if not os.path.exists(filepath):
+        ##flash("File not found.", "error")
+        ##return redirect(url_for('dashboard'))
+    ##mimetype = guess_type(filepath)[0]
+    ##return send_from_directory(user_dir, filename, as_attachment=True)
+    if 'username' not in session:
         return redirect(url_for('login'))
-    user_dir = os.path.join(app.config['upload_folder'], username,)
-    return send_from_directory(user_dir, filename, as_attachment=True)
-#Logout
+    username = session['username']
+    user_dir = os.path.join(app.config['upload_folder'], username)
+    ##filename = secure_filename(filename)
+    filepath = os.path.join(user_dir, filename)
+    if not os.path.normpath(filepath).startswith(os.path.normpath(user_dir)):
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+    if not os.path.exists(filepath):
+        flash("File not found.", "error")
+        return redirect(url_for('dashboard'))
+    mimetype = guess_type(filepath)[0] or 'application/octet-stream'
+    print(f"Sending file: {filepath} with mimetype {mimetype}")
+    try:
+        with open(filepath, 'rb') as f:
+            file_data = f.read()
+        response = Response(
+            file_data, 
+            mimetype=mimetype, 
+            headers={
+                'Content-Disposition': f'attachment; filenmae="{filename}"',
+                'Content-Length': str(os.path.getsize(filepath))
+            }
+        )
+        return response
+    except Exception as e:
+        print(f"Error sending file: {e}")
+        flash("Error downloading file.", "error")
+        return redirect(url_for('dashboard'))
+##ability to delete files
+@app.route('/delete/<filename>', methods=['POST'])
+def delete_file(filename):
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+    user_dir = os.path.join(app.config['upload_folder'], username)
+    path = os.path.join(user_dir, filename)
+    ##delete from the file 
+    if os.path.exists(path):
+        os.remove(path)
+    connection = sqlite3.connect(FILES_DB)
+    c = connection.cursor()
+    c.execute("DELETE FROM files WHERE username = ? AND filename = ?", (username, filename))
+    connection.commit()
+    connection.close()
+    flash(f"{filename} deleted successfully.", "sucess")
+    return redirect(url_for('dashboard'))
+##Logout
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
 if __name__ == '__main__':
+    print("Flask app is starting in debug mode.")
     app.run(debug=True)        
