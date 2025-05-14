@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>File Sharing</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="{{ url_for('static', filename='js/tailwind.config.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <header class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">File Sharing</h2>
+                    <a href="{{ url_for('dashboard') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                </div>
+                <p class="text-gray-600 mt-1">Share and manage access to "{{ file[1] }}"</p>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-6">
+                        {% for category, message in messages %}
+                            <div class="{% if category == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% elif category == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% else %}bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700{% endif %} p-4 rounded shadow-sm mb-3">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">File Information</h3>
+                    <p class="text-gray-600 mt-2">
+                        <span class="font-semibold">Filename:</span> {{ file[1] }}
+                    </p>
+                </div>
+
+                <!-- Share with a new user -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Share with another user</h3>
+                    <form action="{{ url_for('share_file', file_id=file[0]) }}" method="post" class="space-y-4">
+                        <div class="relative mb-4">
+                            <label for="user-search" class="block text-gray-700 text-sm font-bold mb-2">
+                                Share with user:
+                                <span class="text-xs text-gray-500 ml-1">(Type to search users)</span>
+                            </label>
+                            <input type="text" id="user-search" name="shared_username" oninput="searchUsers(this.value)" 
+                                placeholder="Type username to search..." required
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <div id="users-dropdown" class="absolute hidden bg-white border border-gray-300 w-full max-h-40 overflow-y-auto z-10 rounded-b shadow-md"></div>
+                        </div>
+                        
+                        <!-- Permission selector removed - using simple access model -->
+                        <input type="hidden" name="permission_type" value="access">
+                        
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            <i class="fas fa-share-alt mr-2"></i>Grant Access
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Users with access -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Users with access</h3>
+                    
+                    {% if shared_users %}
+                        <ul class="divide-y divide-gray-200">
+                            {% for shared_username, created_date in shared_users %}
+                            <li class="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                <div class="flex-grow mb-2 sm:mb-0">
+                                    <p class="font-medium text-gray-800">{{ shared_username }}</p>
+                                    <p class="text-sm text-gray-500">
+                                        <span class="font-semibold">Shared on:</span> {{ created_date }}
+                                    </p>
+                                </div>
+                                <form method="POST" action="{{ url_for('unshare_file', file_id=file[0], shared_username=shared_username) }}" 
+                                    onsubmit="return confirm('Are you sure you want to remove access for this user?');">
+                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+                                        <i class="fas fa-times mr-1"></i> Remove Access
+                                    </button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center py-8 text-gray-500 bg-gray-100 rounded-lg">
+                            <p>This file is not shared with anyone yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function searchUsers(query) {
+                console.log("Searching for users:", query);
+                const dropdown = document.getElementById('users-dropdown');
+                
+                if (query.length < 2) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+                
+                fetch('/list_users?query=' + encodeURIComponent(query))
+                    .then(response => {
+                        console.log("Response status:", response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Search results:", data);
+                        dropdown.innerHTML = '';
+                        
+                        if (data.users && data.users.length > 0) {
+                            data.users.forEach(username => {
+                                const div = document.createElement('div');
+                                div.className = 'px-4 py-2 text-gray-700 hover:bg-gray-100 cursor-pointer';
+                                div.textContent = username;
+                                div.onclick = function() {
+                                    document.getElementById('user-search').value = username;
+                                    dropdown.classList.add('hidden');
+                                };
+                                dropdown.appendChild(div);
+                            });
+                            dropdown.classList.remove('hidden');
+                        } else {
+                            dropdown.classList.add('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error searching users:', error);
+                        // Show error in dropdown
+                        dropdown.innerHTML = '<div class="px-4 py-2 text-red-700">Error searching users</div>';
+                        dropdown.classList.remove('hidden');
+                    });
+            }
+            
+            // Close the dropdown if user clicks outside of it
+            window.addEventListener('click', function(event) {
+                if (!event.target.matches('#user-search')) {
+                    document.getElementById('users-dropdown').classList.add('hidden');
+                }
+            });
+        </script>
+    </body>
+</html>
