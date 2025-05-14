@@ -330,6 +330,36 @@ def unshare_file(file_id, shared_username):
     connection.close()
     flash(f"Sharing with {shared_username} has been removed.", "success")
     return redirect(url_for('file_shares', file_id=file_id))
+@app.route('/remove_my_access/<int:file_id>', methods=['POST'])
+def remove_my_access(file_id):
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+    # Verify the file exists and is shared with the current user
+    connection = sqlite3.connect(FILES_DB)
+    c = connection.cursor()
+    # Check if this file is actually shared with this user
+    c.execute("""
+        SELECT fp.owner_username, f.filename 
+        FROM file_permissions fp
+        JOIN files f ON fp.file_id = f.id
+        WHERE fp.file_id = ? AND fp.shared_username = ?
+    """, (file_id, username))
+    share_info = c.fetchone()
+    if not share_info:
+        flash("You don't have access to this file or it doesn't exist.", "error")
+        return redirect(url_for('dashboard'))
+    owner_username = share_info[0]
+    filename = share_info[1]
+    # Remove the sharing permission
+    c.execute("""
+        DELETE FROM file_permissions 
+        WHERE file_id = ? AND owner_username = ? AND shared_username = ?
+    """, (file_id, owner_username, username))
+    connection.commit()
+    connection.close()
+    flash(f"Your access to '{filename}' has been removed.", "success")
+    return redirect(url_for('dashboard'))
 ##Logout
 @app.route('/logout')
 def logout():

@@ -94,6 +94,18 @@
                                 </a>
                                 <p class="text-sm text-gray-500">{{ size }} bytes, owned by {{ owner }}</p>
                             </div>
+                            <div class="flex space-x-2">
+                                <!-- Download button -->
+                                <a href="{{ url_for('download_file', file_id=file_id, filename=filename) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                    <i class="fas fa-download mr-1"></i> Download
+                                </a>
+                                <!-- Remove Access button -->
+                                <form method="POST" action="{{ url_for('remove_my_access', file_id=file_id)}}" class="inline">
+                                    <button type="submit" onclick="return confirm('Are you sure you want to remove your access to this file?')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+                                        <i class="fas fa-times-circle mr-1"></i> Remove Access
+                                    </button>
+                                </form>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>
@@ -104,5 +116,13 @@
                 {% endif %}
             </div>
         </div>
+
+        <script>
+            // Show file name when selected
+            document.querySelector('input[type="file"]').addEventListener('change', function(e) {
+                const fileName = e.target.files[0] ? e.target.files[0].name : 'Select a file';
+                e.target.parentNode.querySelector('span').textContent = fileName;
+            });
+        </script>
     </body>
 </html>
