@@ -2,8 +2,11 @@ from flask import *
 import sqlite3
 import bcrypt
 import os
-from werkzeug.utils import *
-from mimetypes import *
+from werkzeug.utils import secure_filename
+from mimetypes import guess_type
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from dotenv import load_dotenv
+load_dotenv()
 
 # Define paths for database files - OUTSIDE WEB ROOT
 # Using Windows paths through WSL's /mnt/c/ mapping
@@ -76,10 +79,13 @@ def create_permissions_table():
 
 app = Flask(__name__)
 # Set up the upload folder within the web root using Windows paths
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 # This is for uploaded files, which should remain in web app directory
 upload_folder = os.path.join(APP_ROOT, 'uploads')
 allowed_extensions = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 app.config['upload_folder'] = upload_folder
+
+csrf = CSRFProtect(app)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -561,6 +567,9 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return render_template('csrf_error.html', error=e.description), 400
 if __name__ == '__main__':
     # Ensure directories exist
     os.makedirs(upload_folder, exist_ok=True)

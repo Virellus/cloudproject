@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Error</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', filename='js/tailwind.config.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <div class="text-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h2 class="text-2xl font-bold text-gray-800 mt-4">Security Error</h2>
+        </div>
+        
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+            <p>A security token (CSRF) validation failed.</p>
+            <p class="text-sm mt-1">{{ error }}</p>
+        </div>
+        
+        <div class="space-y-4">
+            <p class="text-gray-600">This could happen due to:</p>
+            <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                <li>Your session may have expired</li>
+                <li>You may have opened the form in another tab or window</li>
+                <li>Your browser might have blocked cookies</li>
+            </ul>
+            
+            <div class="mt-8">
+                <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 text-center">
+                    Return to Login
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
